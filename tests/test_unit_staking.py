@@ -6,6 +6,7 @@ from tbears.libs.scoretest.patch.score_patcher import get_interface_score, Score
 from tbears.libs.scoretest.score_test_case import ScoreTestCase
 from pprint import pprint
 from core_contracts.staking.staking import Staking
+from core_contracts.staking.staking import InterfaceSystemScore
 from core_contracts.staking.utils.checks import SenderNotScoreOwnerError
 
 EXA = 10 ** 18
@@ -96,10 +97,10 @@ class Test_unit_staking(ScoreTestCase):
         self.mock_sICXTokenInterface = Address.from_string('cx1000000000000000000000000000000000000000')
         # self.patch_internal_method(self.mock_InterfaceSystemScore, 'getIISSInfo', {'nextPRepTerm': 1})
 
-        with patch('core_contracts.staking.staking.IconScoreBase.create_interface_score', return_value=Mock_Staking()):
+        with patch('core_contracts.staking.staking.IconScoreBase.create_interface_score', return_value=Mock_Staking()) as mock_initialization:
             score = self.get_score_instance(Staking, self._owner)
             # print("called")
-
+        mock_initialization.assert_called_with(self.mock_InterfaceSystemScore, InterfaceSystemScore)
         self.score = score
         # self.set_msg(self._owner)
 
@@ -195,7 +196,6 @@ class Test_unit_staking(ScoreTestCase):
 
         self.assertEqual(expected_value, return_value)
 
-
     def test_getPrepDelegations(self):
         self.score.getPrepDelegations()
 
@@ -213,7 +213,8 @@ class Test_unit_staking(ScoreTestCase):
 
     def test_stakeICX(self):
         try:
-            self.score.transferUpdateDelegations()
+            self.set_msg(self._owner)
+            self.score.stakeICX()
         except IconScoreException as err:
             self.assertEqual('StakedICXManager: ICX Staking SCORE is not active.', err.message)
 
@@ -228,17 +229,23 @@ class Test_unit_staking(ScoreTestCase):
         Data = b'StakingICX'
         _to = self._to
         expected_value = 6666666666666666666  #
+        self.score._address_delegations = {
+            str(self._owner): f'{self._prep1}:50.{self._prep2}:50.',
+            str(self._to): f'{self._prep1}:50.{self._prep2}:40.{self._prep3}:10.',
+
+        }
         patch_sicx_interface = Mock_staking_int(sICXInterface_address=self.mock_sICXTokenInterface,
                                                 _to=_to,
                                                 return_balanceOf=_bln,
                                                 _amount=amount,
                                                 _data=Data).create_interface_score
-        with patch.object(self.score, 'create_interface_score', wraps=patch_sicx_interface):
-            print("I'm IN")
+        with patch.object(self.score, 'create_interface_score', wraps=patch_sicx_interface) as stake_patch:
+
             val = self.score.stakeICX()
             print(val)
-            print("I'm OUT")
+            print(self.score._get_address_delegations_in_per(self._owner))
             self.assertEqual(expected_value, val)
+        # stake_patch.assert_called_with(self.mock_sICXTokenInterface)
 
     def test_transferUpdateDelegations(self):
         try:
@@ -266,9 +273,8 @@ class Test_unit_staking(ScoreTestCase):
                                                 _amount=amount,
                                                 _data=Data).create_interface_score
         with patch.object(self.score, 'create_interface_score', wraps=patch_sicx_interface):
-            print("I'm IN")
+
             self.score.transferUpdateDelegations(self._owner, self._to, 10 * 10 ** 18)
-            print("I'm OUT")
 
     def test_delegate(self):
         self.set_msg(self._owner)
@@ -313,9 +319,8 @@ class Test_unit_staking(ScoreTestCase):
                                                 _amount=amount,
                                                 _data=Data).create_interface_score
         with patch.object(self.score, 'create_interface_score', wraps=patch_sicx_interface):
-            print("I'm here")
+
             self.score.delegate(_user_delegations)
-            print("I'm here")
 
     def test_tokenFallback(self):
         # CHECKING FOR STAKING ON
@@ -343,6 +348,5 @@ class Test_unit_staking(ScoreTestCase):
                                                 _amount=_value,
                                                 _data=_data).create_interface_score
         with patch.object(self.score, 'create_interface_score', wraps=patch_sicx_interface):
-            print("I'm here")
+
             self.score.tokenFallback(_from, _value, _data)
-            print("I'm here")
