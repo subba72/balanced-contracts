@@ -15,6 +15,29 @@ EXA = 10 ** 18
 
 class Mock_Staking:
 
+    def __init__(self, sICXInterface_address=None, _to=None, return_balanceOf=None, _amount=None, _data=None):
+        self.sICX_address = sICXInterface_address
+        outer_class = self
+
+        class Mock_sICXTokenInterface:
+            def balanceOf(self, _to):
+                return return_balanceOf
+
+            def mintTo(self, _to, _amount, _data):
+                pass
+
+            def burn(self, _amount):
+                pass
+
+        self.mock_sICX = Mock_sICXTokenInterface()
+
+    def create_interface_score(self, address, score):
+        if address == self.sICX_address:
+            return self.mock_sICX
+
+        else:
+            raise NotImplemented()
+
     def getIISSInfo(self):
         # print("next called")
         return {"nextPRepTerm": 1}
@@ -45,40 +68,6 @@ class Mock_Staking:
         pass
 
 
-class Mock_staking_int:
-
-    def __init__(self, sICXInterface_address, _to, return_balanceOf, _amount, _data):
-        self.sICX_address = sICXInterface_address
-        outer_class = self
-
-        class Mock_sICXTokenInterface:
-            def balanceOf(self, _to):
-                return return_balanceOf
-
-            def mintTo(self, _to, _amount, _data):
-                pass
-
-            def burn(self, _amount):
-                pass
-
-        self.mock_sICX = Mock_sICXTokenInterface()
-
-    def create_interface_score(self, address, score):
-        if address == self.sICX_address:
-            return self.mock_sICX
-
-        else:
-            raise NotImplemented()
-
-
-class Mock_Staking_Method:
-    def __init__(self):
-        pass
-
-    def _get_address_delegations_in_per(self):
-        pass
-
-
 class Test_unit_staking(ScoreTestCase):
 
     def __init__(self, methodName: str = ...):
@@ -97,7 +86,8 @@ class Test_unit_staking(ScoreTestCase):
         self.mock_InterfaceSystemScore = Address.from_string('cx0000000000000000000000000000000000000000')
         self.mock_sICXTokenInterface = Address.from_string('cx1000000000000000000000000000000000000000')
 
-        with patch('core_contracts.staking.staking.IconScoreBase.create_interface_score', return_value=Mock_Staking()) as mock_initialization:
+        with patch('core_contracts.staking.staking.IconScoreBase.create_interface_score',
+                   return_value=Mock_Staking()) as mock_initialization:
             score = self.get_score_instance(Staking, self._owner)
 
         mock_initialization.assert_called_with(self.mock_InterfaceSystemScore, InterfaceSystemScore)
@@ -230,18 +220,18 @@ class Test_unit_staking(ScoreTestCase):
         _to = self._to
         expected_value = 6666666666666666666  #
 
-        patch_sicx_interface = Mock_staking_int(sICXInterface_address=self.mock_sICXTokenInterface,
-                                                _to=_to,
-                                                return_balanceOf=_bln,
-                                                _amount=amount,
-                                                _data=Data).create_interface_score
-        with patch.object(self.score, 'create_interface_score', wraps=patch_sicx_interface) as stake_patch:
+        patch_sicx_interface = Mock_Staking(sICXInterface_address=self.mock_sICXTokenInterface,
+                                            _to=_to,
+                                            return_balanceOf=_bln,
+                                            _amount=amount,
+                                            _data=Data).create_interface_score
+        with patch.object(self.score, 'create_interface_score', wraps=patch_sicx_interface) as object_patch:
 
             val = self.score.stakeICX()
             print(val)
             print(self.score._get_address_delegations_in_per(self._owner))
             self.assertEqual(expected_value, val)
-        stake_patch.assert_called_with(self.mock_sICXTokenInterface, sICXTokenInterface)
+        object_patch.assert_called_with(self.mock_sICXTokenInterface, sICXTokenInterface)
 
         self.score._address_delegations = {
             str(self._owner): f'{self._prep1}:50.{self._prep2}:50.',
@@ -269,14 +259,16 @@ class Test_unit_staking(ScoreTestCase):
         amount = 50 * EXA
         Data = b'StakingICX'
 
-        patch_sicx_interface = Mock_staking_int(sICXInterface_address=self.mock_sICXTokenInterface,
-                                                _to=0,
-                                                return_balanceOf=_bln,
-                                                _amount=amount,
-                                                _data=Data).create_interface_score
-        with patch.object(self.score, 'create_interface_score', wraps=patch_sicx_interface):
+        patch_sicx_interface = Mock_Staking(sICXInterface_address=self.mock_sICXTokenInterface,
+                                            _to=0,
+                                            return_balanceOf=_bln,
+                                            _amount=amount,
+                                            _data=Data).create_interface_score
+        with patch.object(self.score, 'create_interface_score', wraps=patch_sicx_interface) as object_patch:
 
             self.score.transferUpdateDelegations(self._owner, self._to, 10 * 10 ** 18)
+
+        object_patch.assert_called_with(self.mock_sICXTokenInterface, sICXTokenInterface)
 
     def test_delegate(self):
         self.set_msg(self._owner)
@@ -315,14 +307,16 @@ class Test_unit_staking(ScoreTestCase):
         amount = 50 * EXA
         Data = b'StakingICX'
 
-        patch_sicx_interface = Mock_staking_int(sICXInterface_address=self.mock_sICXTokenInterface,
-                                                _to=_to,
-                                                return_balanceOf=_bln,
-                                                _amount=amount,
-                                                _data=Data).create_interface_score
-        with patch.object(self.score, 'create_interface_score', wraps=patch_sicx_interface):
+        patch_sicx_interface = Mock_Staking(sICXInterface_address=self.mock_sICXTokenInterface,
+                                            _to=_to,
+                                            return_balanceOf=_bln,
+                                            _amount=amount,
+                                            _data=Data).create_interface_score
+        with patch.object(self.score, 'create_interface_score', wraps=patch_sicx_interface) as object_patch:
 
             self.score.delegate(_user_delegations)
+        object_patch.assert_called_with(self.mock_InterfaceSystemScore, InterfaceSystemScore)
+        # object_patch.assert_called_with(self.mock_sICXTokenInterface, sICXTokenInterface)
 
     def test_tokenFallback(self):
         # CHECKING FOR STAKING ON
@@ -344,11 +338,13 @@ class Test_unit_staking(ScoreTestCase):
 
         self.set_msg(self.mock_sICXTokenInterface)
         self.score._sICX_address.set(self.mock_sICXTokenInterface)
-        patch_sicx_interface = Mock_staking_int(sICXInterface_address=self.mock_sICXTokenInterface,
-                                                _to=_to,
-                                                return_balanceOf=_value,
-                                                _amount=_value,
-                                                _data=_data).create_interface_score
-        with patch.object(self.score, 'create_interface_score', wraps=patch_sicx_interface):
+        patch_sicx_interface = Mock_Staking(sICXInterface_address=self.mock_sICXTokenInterface,
+                                            _to=_to,
+                                            return_balanceOf=_value,
+                                            _amount=_value,
+                                            _data=_data).create_interface_score
+        with patch.object(self.score, 'create_interface_score', wraps=patch_sicx_interface) as object_patch:
 
             self.score.tokenFallback(_from, _value, _data)
+        object_patch.assert_called_with(self.mock_InterfaceSystemScore, InterfaceSystemScore)
+        # object_patch.assert_called_with(self.mock_sICXTokenInterface, sICXTokenInterface)
