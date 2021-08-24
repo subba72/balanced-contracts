@@ -7,6 +7,7 @@ from tbears.libs.scoretest.score_test_case import ScoreTestCase
 from pprint import pprint
 from core_contracts.staking.staking import Staking
 from core_contracts.staking.staking import InterfaceSystemScore
+from core_contracts.staking.staking import sICXTokenInterface
 from core_contracts.staking.utils.checks import SenderNotScoreOwnerError
 
 EXA = 10 ** 18
@@ -95,11 +96,10 @@ class Test_unit_staking(ScoreTestCase):
         self._prep3 = Address.from_string(f"hx{'12c31' * 8}")
         self.mock_InterfaceSystemScore = Address.from_string('cx0000000000000000000000000000000000000000')
         self.mock_sICXTokenInterface = Address.from_string('cx1000000000000000000000000000000000000000')
-        # self.patch_internal_method(self.mock_InterfaceSystemScore, 'getIISSInfo', {'nextPRepTerm': 1})
 
         with patch('core_contracts.staking.staking.IconScoreBase.create_interface_score', return_value=Mock_Staking()) as mock_initialization:
             score = self.get_score_instance(Staking, self._owner)
-            # print("called")
+
         mock_initialization.assert_called_with(self.mock_InterfaceSystemScore, InterfaceSystemScore)
         self.score = score
         # self.set_msg(self._owner)
@@ -229,11 +229,7 @@ class Test_unit_staking(ScoreTestCase):
         Data = b'StakingICX'
         _to = self._to
         expected_value = 6666666666666666666  #
-        self.score._address_delegations = {
-            str(self._owner): f'{self._prep1}:50.{self._prep2}:50.',
-            str(self._to): f'{self._prep1}:50.{self._prep2}:40.{self._prep3}:10.',
 
-        }
         patch_sicx_interface = Mock_staking_int(sICXInterface_address=self.mock_sICXTokenInterface,
                                                 _to=_to,
                                                 return_balanceOf=_bln,
@@ -245,7 +241,13 @@ class Test_unit_staking(ScoreTestCase):
             print(val)
             print(self.score._get_address_delegations_in_per(self._owner))
             self.assertEqual(expected_value, val)
-        # stake_patch.assert_called_with(self.mock_sICXTokenInterface)
+        stake_patch.assert_called_with(self.mock_sICXTokenInterface, sICXTokenInterface)
+
+        self.score._address_delegations = {
+            str(self._owner): f'{self._prep1}:50.{self._prep2}:50.',
+            str(self._to): f'{self._prep1}:50.{self._prep2}:40.{self._prep3}:10.',
+
+        }
 
     def test_transferUpdateDelegations(self):
         try:
