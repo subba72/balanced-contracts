@@ -91,6 +91,7 @@ class Test_unit_staking(ScoreTestCase):
             score = self.get_score_instance(Staking, self._owner)
 
         mock_initialization.assert_called_with(self.mock_InterfaceSystemScore, InterfaceSystemScore)
+
         self.score = score
         # self.set_msg(self._owner)
 
@@ -228,16 +229,13 @@ class Test_unit_staking(ScoreTestCase):
         with patch.object(self.score, 'create_interface_score', wraps=patch_sicx_interface) as object_patch:
 
             val = self.score.stakeICX()
-            print(val)
-            print(self.score._get_address_delegations_in_per(self._owner))
+            # print(val)
+            check= self.score._get_address_delegations_in_per(self._owner)
             self.assertEqual(expected_value, val)
+            self.assertTrue('None' in check) # This means the user has not delegated
+
         object_patch.assert_called_with(self.mock_sICXTokenInterface, sICXTokenInterface)
-
-        self.score._address_delegations = {
-            str(self._owner): f'{self._prep1}:50.{self._prep2}:50.',
-            str(self._to): f'{self._prep1}:50.{self._prep2}:40.{self._prep3}:10.',
-
-        }
+        self.assertEqual(220*EXA, self.score._total_stake.get())
 
     def test_transferUpdateDelegations(self):
         try:
@@ -296,17 +294,12 @@ class Test_unit_staking(ScoreTestCase):
         self.score._sICX_address.set(self.mock_sICXTokenInterface)
         self.score._total_stake.set(1000 * 10 ** 18)
 
-        # self.patch_internal_method(self.mock_sICXTokenInterface, 'balanceOf', lambda _to: _bln)
-        # # ScorePatcher.register_interface_score(self.mock_sICXTokenInterface)
-        # # ScorePatcher.patch_internal_method(self.mock_sICXTokenInterface, 'balanceOf', lambda _to: 2* 10**18)
-        # self.score.delegate(_user_delegations)
-        # self.assert_internal_call(self.mock_sICXTokenInterface, 'balanceOf', _to)
 
         # raise Exception("not completed")
         return_blnc = 20 * EXA
         amount = 50 * EXA
         Data = b'StakingICX'
-
+        print(self.score._prep_delegations[self._owner])
         patch_sicx_interface = Mock_Staking(sICXInterface_address=self.mock_sICXTokenInterface,
                                             _to=_to,
                                             return_balanceOf=_bln,
@@ -315,8 +308,8 @@ class Test_unit_staking(ScoreTestCase):
         with patch.object(self.score, 'create_interface_score', wraps=patch_sicx_interface) as object_patch:
 
             self.score.delegate(_user_delegations)
-        object_patch.assert_called_with(self.mock_InterfaceSystemScore, InterfaceSystemScore)
-        # object_patch.assert_called_with(self.mock_sICXTokenInterface, sICXTokenInterface)
+        # object_patch.assert_called_with(self.mock_InterfaceSystemScore, InterfaceSystemScore)
+        object_patch.assert_called_with(self.mock_sICXTokenInterface, sICXTokenInterface)
 
     def test_tokenFallback(self):
         # CHECKING FOR STAKING ON
@@ -346,5 +339,5 @@ class Test_unit_staking(ScoreTestCase):
         with patch.object(self.score, 'create_interface_score', wraps=patch_sicx_interface) as object_patch:
 
             self.score.tokenFallback(_from, _value, _data)
-        object_patch.assert_called_with(self.mock_InterfaceSystemScore, InterfaceSystemScore)
-        # object_patch.assert_called_with(self.mock_sICXTokenInterface, sICXTokenInterface)
+        # object_patch.assert_called_with(self.mock_InterfaceSystemScore, InterfaceSystemScore)
+        object_patch.assert_called_with(self.mock_sICXTokenInterface, sICXTokenInterface)
