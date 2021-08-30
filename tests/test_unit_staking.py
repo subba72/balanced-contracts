@@ -11,6 +11,7 @@ from core_contracts.staking.staking import sICXTokenInterface
 from core_contracts.staking.utils.checks import SenderNotScoreOwnerError
 
 EXA = 10 ** 18
+DENOMINATOR = 10 ** 18
 
 
 class Mock_Staking:
@@ -228,14 +229,62 @@ class Test_unit_staking(ScoreTestCase):
                                             _data=Data).create_interface_score
         with patch.object(self.score, 'create_interface_score', wraps=patch_sicx_interface) as object_patch:
 
-            val = self.score.stakeICX()
+            val = self.score.stakeICX(self._owner)
             # print(val)
-            check= self.score._get_address_delegations_in_per(self._owner)
-            self.assertEqual(expected_value, val)
-            self.assertTrue('None' in check) # This means the user has not delegated
+            check = self.score._get_address_delegations_in_per(self._owner)
 
+            print(check)
+            self.assertTrue('None' in check)  # This means the user has not delegated
+
+        self.assertEqual(expected_value, val)
         object_patch.assert_called_with(self.mock_sICXTokenInterface, sICXTokenInterface)
-        self.assertEqual(220*EXA, self.score._total_stake.get())
+        # object_patch.mintTo.assert_called_with(self._owner, expected_value,b'None')
+        self.assertEqual(220 * EXA, self.score._total_stake.get())
+
+    def test_staking(self):
+        self.set_msg(self._owner, 20 * EXA)
+        self.score._sICX_address.set(self.mock_sICXTokenInterface)
+        self.score.toggleStakingOn()
+        self.score._total_stake.set(200 * EXA)
+
+        self.score._rate.set(3 * EXA)
+        _bln = 150 * 10 ** 18
+        amount = 50 * EXA
+        Data = b'StakingICX'
+        _to = self._to
+        expected_value = 6666666666666666666  #
+
+
+        top_prep = {str(self._prep1), str(self._prep2), str(self._prep3)}
+        self.score._top_preps = top_prep
+        self.score._prep_list = top_prep
+
+        ScorePatcher.register_interface_score(self.mock_sICXTokenInterface)
+        ScorePatcher.patch_internal_method(self.mock_sICXTokenInterface, 'balanceOf', lambda _address: _bln)
+
+        self.score.stakeICX(self._to)
+        self.assert_internal_call(self.mock_sICXTokenInterface, 'balanceOf', self._to)
+        self.score.TokenTransfer.assert_called_with(self._to, expected_value,
+                                                    f'{expected_value // DENOMINATOR} sICX minted to {self._to}')
+        self.assertEqual(expected_value, self.score._sICX_supply.get())
+
+        # print(val)
+
+        # print(self.score._get_address_delegations_in_per(self._to))
+        print('---')
+        print(self.score._address_delegations[str(self._to)])
+        print(self.score._prep_delegations[str(self._to)])
+        # self.score.stakeICX(self._owner)
+        # print(self.score._address_delegations[str(self._owner)])
+        # print(self.score._sICX_supply.get())
+        # print(self.score.getTotalStake())
+        total_stake = 220000000000000000000
+        print('----')
+
+        _user_delegations=[{'_address':str(self._prep1), '_votes_in_per': 100 * 10 ** 18}]
+        print(self.score._prep_list)
+        self.score.delegate(_user_delegations)
+        print(self.score._prep_list)
 
     def test_transferUpdateDelegations(self):
         try:
@@ -293,7 +342,6 @@ class Test_unit_staking(ScoreTestCase):
 
         self.score._sICX_address.set(self.mock_sICXTokenInterface)
         self.score._total_stake.set(1000 * 10 ** 18)
-
 
         # raise Exception("not completed")
         return_blnc = 20 * EXA
