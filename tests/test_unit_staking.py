@@ -302,20 +302,40 @@ class Test_unit_staking(ScoreTestCase):
             self.assertEqual("StakedICXManager: Only sicx token contract can call this function.", err.message)
 
         self.set_msg(self.mock_sICXTokenInterface)  # SETTING SICXINTERFACE ADDRESS AS IN CALLING FUNCTION
-        _bln = 150 * 10 ** 18
+        _bln = 10 * 10 ** 18
         amount = 50 * EXA
         Data = b'StakingICX'
+        self.score._rate.set(3 * EXA)
 
+        top_prep = {str(self._prep1), str(self._prep2), str(self._prep3)}
+        self.score._top_preps = top_prep
+        self.score._prep_list = top_prep
+        print("owner")
+        print(self.score._get_address_delegations_in_per(self._owner))
+        print("to")
+        print(self.score._get_address_delegations_in_per(self._to))
+        print("prep delegation")
+        print(self.score.getPrepDelegations())
         patch_sicx_interface = Mock_Staking(sICXInterface_address=self.mock_sICXTokenInterface,
-                                            _to=0,
+                                            _to=self._owner,
                                             return_balanceOf=_bln,
                                             _amount=amount,
                                             _data=Data).create_interface_score
         with patch.object(self.score, 'create_interface_score', wraps=patch_sicx_interface) as object_patch:
-
+            self.score.stakeICX(self._owner)
+            print("prep delegation on patch")
+            print(self.score.getPrepDelegations())
             self.score.transferUpdateDelegations(self._owner, self._to, 10 * 10 ** 18)
 
+
         object_patch.assert_called_with(self.mock_sICXTokenInterface, sICXTokenInterface)
+
+        print("prep delegation")
+        print(self.score.getPrepDelegations())
+
+
+        # THIS ASSERT THAT THE RECIEVER IS NEW TO STAKING CONTRACT THUS REPLICATES THE SENDER DELEGATION PREFERENCE
+        self.assertEqual(self.score.getAddressDelegations(self._to), self.score.getAddressDelegations(self._owner))
 
     def test_delegate(self):
         self.set_msg(self._owner)
