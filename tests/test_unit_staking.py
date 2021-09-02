@@ -213,45 +213,8 @@ class Test_unit_staking(ScoreTestCase):
     def test_claimableICX(self):
         print(self.score.claimableICX(self._owner))
 
+
     def test_stakeICX(self):
-        try:
-            self.set_msg(self._owner)
-            self.score.stakeICX()
-        except IconScoreException as err:
-            self.assertEqual('StakedICXManager: ICX Staking SCORE is not active.', err.message)
-
-        self.set_msg(self._owner, 20 * EXA)
-        self.score._sICX_address.set(self.mock_sICXTokenInterface)
-        self.score.toggleStakingOn()
-        self.score._total_stake.set(200 * EXA)
-
-        self.score._rate.set(3 * EXA)
-        _bln = 150 * 10 ** 18
-        amount = 50 * EXA
-        Data = b'StakingICX'
-        _to = self._to
-        expected_value = 6666666666666666666  #
-
-        patch_sicx_interface = Mock_Staking(sICXInterface_address=self.mock_sICXTokenInterface,
-                                            _to=_to,
-                                            return_balanceOf=_bln,
-                                            _amount=amount,
-                                            _data=Data).create_interface_score
-        with patch.object(self.score, 'create_interface_score', wraps=patch_sicx_interface) as object_patch:
-
-            val = self.score.stakeICX(self._owner)
-            # print(val)
-            check = self.score._get_address_delegations_in_per(self._owner)
-
-            print(check)
-            self.assertTrue('None' in check)  # This means the user has not delegated
-
-        self.assertEqual(expected_value, val)
-        object_patch.assert_called_with(self.mock_sICXTokenInterface, sICXTokenInterface)
-        # object_patch.mintTo.assert_called_with(self._owner, expected_value,b'None')
-        self.assertEqual(220 * EXA, self.score._total_stake.get())
-
-    def test_staking(self):
         self.set_msg(self._owner, 400 * EXA)
         self.score._sICX_address.set(self.mock_sICXTokenInterface)
         self.score.toggleStakingOn()
