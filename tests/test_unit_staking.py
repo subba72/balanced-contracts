@@ -38,7 +38,6 @@ class Mock_Staking:
 
         self.mock_sICX = Mock_sICXTokenInterface()
         self.mock_sICX.balanceOf(_to)
-        print(self.mock_sICX.balanceOf(_to))
 
     def create_interface_score(self, address, score):
         if address == self.sICX_address:
@@ -311,7 +310,7 @@ class Test_unit_staking(ScoreTestCase):
         except IconScoreException as err:
             self.assertEqual('StakedICXManager: ICX Staking SCORE is not active.', err.message)
 
-        self.set_msg(self._owner)
+        self.set_msg(self._owner, 12* EXA)
         self.score._sICX_address.set(self.mock_sICXTokenInterface)
         self.score.toggleStakingOn()
         # CALLING FUNCTION WITH OWNER ADDRESS
@@ -320,7 +319,7 @@ class Test_unit_staking(ScoreTestCase):
         except IconScoreException as err:
             self.assertEqual("StakedICXManager: Only sicx token contract can call this function.", err.message)
 
-        self.set_msg(self.mock_sICXTokenInterface, 16 * EXA)  # SETTING SICXINTERFACE ADDRESS AS IN CALLING FUNCTION
+        # self.set_msg(self.mock_sICXTokenInterface, 16 * EXA)  # SETTING SICXINTERFACE ADDRESS AS IN CALLING FUNCTION
         _bln = 10 * EXA
         amount = 25 * EXA
         Data = b'StakingICX'
@@ -328,13 +327,10 @@ class Test_unit_staking(ScoreTestCase):
 
         top_prep = {str(self._prep1), str(self._prep2), str(self._prep3), str(self._prep4)}
         self.score._top_preps = top_prep
-        self.score._prep_list = top_prep
-        # print("owner")
-        # print(self.score._get_address_delegations_in_per(self._owner))
-        # print("to")
-        # print(self.score._get_address_delegations_in_per(self._to))
-        print("prep delegation")
-        print(self.score.getPrepDelegations())
+        self.score._prep_list = {str(self._prep1), str(self._prep2), str(self._prep3), str(self._prep4),str(self._prep5)}
+
+        print("\ngetPrepDelegations after assigning : ",self.score.getPrepDelegations())
+        print(' self.score.getTotalStake(): ', self.score.getTotalStake())
         patch_sicx_interface = Mock_Staking(sICXInterface_address=self.mock_sICXTokenInterface,
                                             _to=self._owner,
                                             return_balanceOf=_bln,
@@ -342,29 +338,74 @@ class Test_unit_staking(ScoreTestCase):
                                             _data=Data).create_interface_score
         with patch.object(self.score, 'create_interface_score', wraps=patch_sicx_interface) as object_patch:
             self.score.stakeICX(self._owner)
-            # print("get address del")
-            # print(self.score._get_address_delegations_in_per(self._owner))
-            print(self.score.getAddressDelegations(self._owner))
-            print("prep delegation on patch")
-            print(self.score.getPrepDelegations())
-            print(self.score.getAddressDelegations(self._to))
+            print("\n after stake")
+            print("\ngetAddressDelegations, owner: ",self.score.getAddressDelegations(self._owner))
+            _owner_address_del_pref= self.score.getAddressDelegations(self._owner)
+
+            print("\nprep delegation ",self.score.getPrepDelegations())
+
             object_patch.assert_called_with(self.mock_sICXTokenInterface, sICXTokenInterface)
 
-            object_patch(self.mock_sICXTokenInterface, self.score).transfer(self._to, 1 * EXA)
-            self.score.transferUpdateDelegations(self._owner, self._to, 10 * 10 ** 18)
-            print("---")
-            print(self.score.getAddressDelegations(self._to))
+            # object_patch(self.mock_sICXTokenInterface, self.score).transfer(self._to, 1 * EXA)
 
-            print("prep delegation")
-            print(self.score.getPrepDelegations())
+
             #
-            # # THIS ASSERT THAT THE RECIEVER IS NEW TO STAKING CONTRACT THUS REPLICATES THE SENDER DELEGATION PREFERENCE
-            # self.assertEqual(self.score._get_address_delegations_in_per(self._to), self.score._get_address_delegations_in_per(self._owner))
-            # print(self.score.getAddressDelegations(self._to))
-            # print(self.score.getAddressDelegations(self._owner))
-            # print("\nsecond call")
-            # self.score.transferUpdateDelegations(self._owner, self._to, 10 * 10 ** 18)
-            # print(self.score.getAddressDelegations(self._to))
+            # print("---")
+            print("\ngetAddressDelegations, _to : ",self.score.getAddressDelegations(self._to))
+
+            self.set_msg(self.mock_sICXTokenInterface)
+            self.score.transferUpdateDelegations(self._owner, self._to, 10 * 10 ** 18)
+            print(' self.score.getTotalStake(): ', self.score.getTotalStake())
+
+            print("\n after transferUpdateDelegations")
+
+            print("\ngetAddressDelegations, _to : ", self.score.getAddressDelegations(self._to))
+            _to_old_address_deleg= self.score.getAddressDelegations(self._to)
+            _to_address_del_pref = self.score.getAddressDelegations(self._to)
+            print("\nprep delegation ", self.score.getPrepDelegations())
+
+            # THE TOTAL STAKE RAMAINS THE SAME THOUGH THE transferUpdateDelegations() IS CALLED
+            self.assertEqual((12 * EXA  ), self.score.getTotalStake())
+            print(' self.score.getTotalStake(): ', self.score.getTotalStake())
+
+            # _owner PREFERENCE REPLICATED TO _to; BOTH HAVE SAME PREPS TO DELEGATE
+            self.assertEqual(_to_address_del_pref.keys(), _owner_address_del_pref.keys())
+            self.assertNotEqual(_to_address_del_pref, _owner_address_del_pref)
+
+            self.set_msg(self._to, 40*EXA)
+            self.score.stakeICX(self._to)
+            print("\n after stake")
+            print("\ngetAddressDelegations, _to : ", self.score.getAddressDelegations(self._to))
+            print("\nprep delegation ", self.score.getPrepDelegations())
+
+            _distribute_evenly = (40 * EXA) // 4  # TOP_PREP COUNT = 4
+            print(' self.score.getTotalStake(): ', self.score.getTotalStake())
+
+            # CHECKING _to DELEGATION VALUE UPDATED AFTER STAKING
+            # THE PREP DELEGATION UPDATED WITH THE STAKING DONE BY _to
+            self.assertEqual(_owner_address_del_pref[str(self._prep1)]+ _distribute_evenly, self.score.getPrepDelegations()[str(self._prep1)])
+            self.assertEqual(_owner_address_del_pref[str(self._prep2)]+ _distribute_evenly, self.score.getPrepDelegations()[str(self._prep2)])
+            self.assertEqual(_owner_address_del_pref[str(self._prep3)]+ _distribute_evenly, self.score.getPrepDelegations()[str(self._prep3)])
+            self.assertEqual(_owner_address_del_pref[str(self._prep4)]+ _distribute_evenly, self.score.getPrepDelegations()[str(self._prep4)])
+            self.assertEqual(0, self.score.getPrepDelegations()[str(self._prep5)])
+
+            # TOTAL STAKE INCREASED WITH _owner AND _tO STAKING 12 AND 40 DURING THIS FN TEST
+            self.assertEqual((12 * EXA + 40 *EXA), self.score.getTotalStake())
+            _to_updated_address_deleg= self.score.getAddressDelegations(self._to)
+
+            # CHECKING 40* EXA DISTRUBTED EQUALLY
+            # BEFORE 0
+            # AFTER 10000000000000000000
+            self.assertNotEqual(_to_old_address_deleg, _to_updated_address_deleg)
+            self.assertEqual(_to_old_address_deleg[str(self._prep1)]+_distribute_evenly, self.score.getAddressDelegations(self._to)[str(self._prep1)])
+            # DONE FOR 1 PREP IS EQUAL THUS OTHER ARE ALSO EQUAL
+
+
+            # TRANSFERING FROM _to TO _owner AGAIN AND VALIDATING ASSERTION
+
+
+
+
 
     def test_delegate(self):
         self.set_msg(self._owner)
