@@ -496,7 +496,7 @@ class Test_unit_staking(ScoreTestCase):
 
     def test_tokenFallback(self):
         # CHECKING FOR STAKING ON
-        self.set_msg(self._owner)
+        self.set_msg(self._owner )
         try:
             self.score.tokenFallback()
         except IconScoreException as err:
@@ -505,22 +505,51 @@ class Test_unit_staking(ScoreTestCase):
         self.score.toggleStakingOn()
         _from = self._owner
         _value = 100 * 10 ** 18
-        _data = b"{\"method\": \"unstake\",\"user\":\"hx436106433144e736a67710505fc87ea9becb141d\"}"
+        print(self._prep1)
+        _data = b"{\"method\": \"unstake\",\"user\":\"hx1233112331123311233112331123311233112331\"}"
         _to = self._to
         try:
             self.score.tokenFallback(_from, _value, _data)
         except IconScoreException as err:
             self.assertEqual("StakedICXManager: The Staking contract only accepts sICX tokens.", err.message)
 
-        self.set_msg(self.mock_sICXTokenInterface)
+        self.score._rate.set(1 * EXA)
+
         self.score._sICX_address.set(self.mock_sICXTokenInterface)
+        top_prep = {str(self._prep1), str(self._prep2), str(self._prep3), str(self._prep4)}
+        self.score._top_preps = top_prep
+        self.score._prep_list = {str(self._prep1), str(self._prep2), str(self._prep3), str(self._prep4),
+                                 str(self._prep5)}
         patch_sicx_interface = Mock_Staking(sICXInterface_address=self.mock_sICXTokenInterface,
                                             _to=_to,
                                             return_balanceOf=_value,
-                                            _amount=_value,
-                                            _data=_data).create_interface_score
+                                            _amount=_value ).create_interface_score
         with patch.object(self.score, 'create_interface_score', wraps=patch_sicx_interface) as object_patch:
+            self.set_msg(self.mock_sICXTokenInterface,200*EXA)
+            print( self.score.stakeICX(self._owner))
+            print(' self.score.getTotalStake(): ', self.score.getTotalStake())
+            print("\nAfter stakeICX\nprep delegation ", self.score.getPrepDelegations())
+            print("\ngetAddressDelegations, _owner : ", self.score.getAddressDelegations(self._owner))
+            staking_prep_del= self.score.getPrepDelegations()
+            _data = b"{\"method\": \"unstake\"}"
+            self.score.tokenFallback(_from, 5*EXA, _data)
+            amount_to_remove_from_prep= ((25000000000000000000//100)*5*EXA)//10**18
+            print("\nAfter tokenFallback\nprep delegation ", self.score.getPrepDelegations())
 
-            self.score.tokenFallback(_from, _value, _data)
+            print("\ngetAddressDelegations, _owner : ", self.score.getAddressDelegations(self._owner))
+
+            print(' \nself.score.getTotalStake(): ', self.score.getTotalStake())
+            self.assertEqual(195*EXA, self.score.getTotalStake())
+            self.assertEqual((staking_prep_del[str(self._prep2)]-amount_to_remove_from_prep), self.score.getPrepDelegations()[str(self._prep2)])
+
+            _data = b"{\"method\": \"unstake\",\"user\":\"hx1233112331123311233112331123311233112331\"}"
+            self.score.tokenFallback(_from, 10*EXA, _data)
+
+            print("\nAfter tokenFallback 1\nprep delegation ", self.score.getPrepDelegations())
+
+            print("\ngetAddressDelegations, _owner : ", self.score.getAddressDelegations(self._owner))
+
+            print(' self.score.getTotalStake(): ', self.score.getTotalStake())
+            self.assertEqual((195-10) * EXA, self.score.getTotalStake())
         # object_patch.assert_called_with(self.mock_InterfaceSystemScore, InterfaceSystemScore)
         object_patch.assert_called_with(self.mock_sICXTokenInterface, sICXTokenInterface)
