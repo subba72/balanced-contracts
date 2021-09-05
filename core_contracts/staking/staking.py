@@ -724,17 +724,12 @@ class Staking(IconScoreBase):
         """
         self.get_sICX_score().burn(_value)
         amount_to_unstake = (_value * self._rate.get()) // DENOMINATOR
-        print('_value', _value)
-        print('rate', self._rate.get())
         delegation_in_per = self._get_address_delegations_in_per(_to)
         self._total_unstake_amount.set(self._total_unstake_amount.get() + amount_to_unstake)
         for address, votes_per in delegation_in_per.items():
             prep_percent = int(votes_per)
-            print('prep_percent: ',prep_percent)
             amount_to_remove_from_prep = ((prep_percent // 100) * amount_to_unstake) // DENOMINATOR
             self._prep_delegations[address] -= amount_to_remove_from_prep
-            print("amount_to_remove_from_prep: ",amount_to_remove_from_prep)
-            print("getPrepDelegations: ",self.getPrepDelegations())
         self._total_stake.set(self._total_stake.get() - amount_to_unstake)
         self._delegations(self._reset_top_preps())
         self._stake(self._total_stake.get())
@@ -742,7 +737,6 @@ class Staking(IconScoreBase):
         address_to_send = _to
         if _sender_address is not None:
             address_to_send = _sender_address
-        print('amount_to_unstake:',amount_to_unstake)
         self._linked_list_var.append(_to, amount_to_unstake,
                                      stake_in_network['unstakes'][-1]['unstakeBlockHeight'],
                                      address_to_send,
