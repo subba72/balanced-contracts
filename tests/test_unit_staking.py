@@ -431,7 +431,7 @@ class Test_unit_staking(ScoreTestCase):
             self.assertDictEqual(before_transfer, self.score.getPrepDelegations())
 
     def test_delegate(self):
-        self.set_msg(self._owner, 100 * EXA)
+        self.set_msg(self._owner, 400 * EXA)
         try:
             self.score.delegate()
         except IconScoreException as err:
@@ -444,7 +444,7 @@ class Test_unit_staking(ScoreTestCase):
         self.score._rate.set(1 * EXA)
 
         _user_delegations = [
-            {'_address': str(self._prep1), '_votes_in_per': 100 * 10 ** 18}]
+            {'_address': str(self._prep1), '_votes_in_per': 100 * 10 ** 18},]
         _to = self._owner
 
         top_prep = {str(self._prep1), str(self._prep2), str(self._prep3), str(self._prep4)}
@@ -467,14 +467,30 @@ class Test_unit_staking(ScoreTestCase):
             print("\ngetAddressDelegations, _owner : ", self.score.getAddressDelegations(self._owner))
             print("\n_get_address_delegations_in_per, _owner : ", self.score._get_address_delegations_in_per(self._owner))
 
+            print(' self.score.getTotalStake(): ', self.score.getTotalStake())
             self.score.delegate(_user_delegations)
             print("\nAfter Delegate\nprep delegation ", self.score.getPrepDelegations())
             print("\ngetAddressDelegations, _owner : ", self.score.getAddressDelegations(self._owner))
             print("\n_get_address_delegations_in_per, _owner : ", self.score._get_address_delegations_in_per(self._owner))
 
-            expeceted={str(self._prep1): 100 * 10 ** 18}
-            self.assertEqual(100 * 10 ** 18,self.score.getAddressDelegations(self._owner)[str(self._prep1)])
+            print(' self.score.getTotalStake(): ', self.score.getTotalStake())
+            expeceted={str(self._prep1): 400 * 10 ** 18}
+            self.assertEqual(400 * 10 ** 18,self.score.getAddressDelegations(self._owner)[str(self._prep1)])
             self.assertDictEqual(expeceted,self.score.getAddressDelegations(self._owner))
+            try:
+                _user_delegations = [{'_address': str(self._prep1), '_votes_in_per': 100 * 10 ** 18},
+                {'_address': str(self._prep5), '_votes_in_per': 100 * 10 ** 18}]
+                self.score.delegate(_user_delegations)
+            except IconScoreException as err:
+                self.assertTrue(f'StakedICXManager: Total delegations should be 100%.Your delegation preference is {_user_delegations}',err.message)
+
+            _user_delegations = [{'_address': str(self._prep1), '_votes_in_per': 50* 10 ** 18},
+                                 {'_address': str(self._prep5), '_votes_in_per': 50* 10 ** 18}]
+
+            self.score.delegate(_user_delegations)
+            # THE AMOUNT EQUALLY DELEGATED
+            self.assertEqual(200 * 10 ** 18, self.score.getAddressDelegations(self._owner)[str(self._prep1)])
+            self.assertEqual(200 * 10 ** 18, self.score.getAddressDelegations(self._owner)[str(self._prep5)])
         # object_patch.assert_called_with(self.mock_InterfaceSystemScore, InterfaceSystemScore)
         object_patch.assert_called_with(self.mock_sICXTokenInterface, sICXTokenInterface)
 
