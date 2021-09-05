@@ -530,10 +530,12 @@ class Test_unit_staking(ScoreTestCase):
             print(' self.score.getTotalStake(): ', self.score.getTotalStake())
             print("\nAfter stakeICX\nprep delegation ", self.score.getPrepDelegations())
             print("\ngetAddressDelegations, _owner : ", self.score.getAddressDelegations(self._owner))
+            print("\ngetUnstakingAmount:", self.score.getUnstakingAmount())
             staking_prep_del= self.score.getPrepDelegations()
             _data = b"{\"method\": \"unstake\"}"
             self.score.tokenFallback(_from, 5*EXA, _data)
             amount_to_remove_from_prep= ((25000000000000000000//100)*5*EXA)//10**18
+
             print("\nAfter tokenFallback\nprep delegation ", self.score.getPrepDelegations())
 
             print("\ngetAddressDelegations, _owner : ", self.score.getAddressDelegations(self._owner))
@@ -541,7 +543,8 @@ class Test_unit_staking(ScoreTestCase):
             print(' \nself.score.getTotalStake(): ', self.score.getTotalStake())
             self.assertEqual(195*EXA, self.score.getTotalStake())
             self.assertEqual((staking_prep_del[str(self._prep2)]-amount_to_remove_from_prep), self.score.getPrepDelegations()[str(self._prep2)])
-
+            self.assertEqual(5*EXA, self.score.getUnstakingAmount())
+            print("\ngetUnstakingAmount:", self.score.getUnstakingAmount())
             _data = b"{\"method\": \"unstake\",\"user\":\"hx1233112331123311233112331123311233112331\"}"
             self.score.tokenFallback(_from, 10*EXA, _data)
 
@@ -553,3 +556,7 @@ class Test_unit_staking(ScoreTestCase):
             self.assertEqual((195-10) * EXA, self.score.getTotalStake())
         # object_patch.assert_called_with(self.mock_InterfaceSystemScore, InterfaceSystemScore)
         object_patch.assert_called_with(self.mock_sICXTokenInterface, sICXTokenInterface)
+
+        self.assertEqual(15 * EXA, self.score.getUnstakingAmount())
+        # print( self.score.getUserUnstakeInfo(self._owner))
+        # print( self.score.claimableICX(self._owner))

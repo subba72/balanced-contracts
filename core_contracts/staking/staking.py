@@ -742,6 +742,7 @@ class Staking(IconScoreBase):
         address_to_send = _to
         if _sender_address is not None:
             address_to_send = _sender_address
+        print('amount_to_unstake:',amount_to_unstake)
         self._linked_list_var.append(_to, amount_to_unstake,
                                      stake_in_network['unstakes'][-1]['unstakeBlockHeight'],
                                      address_to_send,
