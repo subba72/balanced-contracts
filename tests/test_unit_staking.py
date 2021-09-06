@@ -104,6 +104,10 @@ class Test_unit_staking(ScoreTestCase):
 
         self.score = score
         # self.set_msg(self._owner)
+        top_prep = {str(self._prep1), str(self._prep2), str(self._prep3), str(self._prep4)}
+        self.score._top_preps = top_prep
+        self.score._prep_list = {str(self._prep1), str(self._prep2), str(self._prep3), str(self._prep4),
+                                 str(self._prep5)}
 
     def test_name(self):
         self.set_tx(self._owner)
@@ -122,20 +126,25 @@ class Test_unit_staking(ScoreTestCase):
         # self.score.toggleStakingOn()
 
         self.score.toggleStakingOn()
+        self.assertEqual(True,self.score._staking_on.get())
         # NOT OWNER
         self.set_msg(self._to)
-        with self.assertRaises(SenderNotScoreOwnerError) as err:  # executes when assertionError is raised
-            # print(str(err), 'method called by other than owner raise Error')
+        try:
             self.score.toggleStakingOn()
+        except SenderNotScoreOwnerError as err:
+
+            self.assertEqual( str(self._owner), str(err))
 
     def test_setSicxAddress(self):
         self.set_msg(self._owner)
         self.score.setSicxAddress(self.mock_sICXTokenInterface)
+        self.assertEqual(self.mock_sICXTokenInterface,self.score._sICX_address.get())
+
         self.set_msg(self._to)
-        # self.score.setSicxAddress(self.mock_sICXTokenInterface)
 
         with self.assertRaises(SenderNotScoreOwnerError) as err:
             self.score.setSicxAddress(self.mock_sICXTokenInterface)
+            self.assertEqual(str(self._owner),str(err))
         self.set_msg(self._owner)
         try:
             self.score.setSicxAddress(self._to)  # EOA sent instead of contract
@@ -151,13 +160,26 @@ class Test_unit_staking(ScoreTestCase):
 
     def test_setUnstakeBatchLimit(self):
         self.set_msg(self._owner)
-        self.score.setUnstakeBatchLimit(2)
+        self.score.setUnstakeBatchLimit(200)
+        self.assertEqual(200, self.score._unstake_batch_limit.get())
+
+        self.set_msg(self._to)
+        try:
+            self.score.setUnstakeBatchLimit(200)
+        except SenderNotScoreOwnerError as err:
+
+            self.assertEqual(str(self._owner), str(err))
 
     def test_getUnstakeBatchLimit(self):
-        print(self.score.getUnstakeBatchLimit())
+        self.set_msg(self._owner)
+        self.score.setUnstakeBatchLimit(200)
+        self.assertEqual(200, self.score.getUnstakeBatchLimit())
 
     def test_getPrepList(self):
-        print(self.score.getPrepList())
+
+        prep_list=[str(self._prep1), str(self._prep2), str(self._prep3), str(self._prep4), str(self._prep5)]
+
+        self.assertEqual(prep_list.sort(),self.score.getPrepList().sort())
 
     def test_getUnstakingAmount(self):
         print(self.score.getUnstakingAmount())
@@ -169,7 +191,9 @@ class Test_unit_staking(ScoreTestCase):
         print(self.score.getLifetimeReward())
 
     def test_getTopPreps(self):
-        self.score.getTopPreps()
+        top_prep= [str(self._prep1), str(self._prep2), str(self._prep3), str(self._prep4)]
+
+        self.assertEqual(top_prep.sort(), self.score.getTopPreps().sort())
 
     def test_getAddressDelegations(self):
         self.set_msg(self._owner)
@@ -198,7 +222,11 @@ class Test_unit_staking(ScoreTestCase):
         self.assertEqual(expected_value, return_value)
 
     def test_getPrepDelegations(self):
-        self.score.getPrepDelegations()
+
+        self.assertEqual(0, self.score.getPrepDelegations()[str(self._prep1)])
+        self.assertEqual(0, self.score.getPrepDelegations()[str(self._prep2)])
+        self.assertEqual(0, self.score.getPrepDelegations()[str(self._prep3)])
+        self.assertEqual(0, self.score.getPrepDelegations()[str(self._prep4)])
 
     def test_getUnstakeInfo(self):
         self.score.getUnstakeInfo()
