@@ -45,7 +45,6 @@ class Governance(IconScoreBase):
 
     def on_update(self) -> None:
         super().on_update()
-        self.scoreUpdate_13()
 
     @external(readonly=True)
     def name(self) -> str:
@@ -59,7 +58,7 @@ class Governance(IconScoreBase):
     def getVotersCount(self, vote_index: int) -> dict:
         proposal = ProposalDB(var_key=vote_index, db=self.db)
         return {'for_voters': proposal.for_voters_count.get(), 'against_voters': proposal.against_voters_count.get()}
-    
+
     @external
     @only_owner
     def setVoteDuration(self, duration: int) -> None:
@@ -81,7 +80,7 @@ class Governance(IconScoreBase):
     @only_owner
     def setQuorum(self, quorum: int) -> None:
         """
-        Sets the percentage of the total eligible baln which must participate in a vote 
+        Sets the percentage of the total eligible baln which must participate in a vote
         for a vote to be valid.
 
         :param quorum: percentage of the total eligible baln required for a vote to be valid
@@ -97,7 +96,7 @@ class Governance(IconScoreBase):
         for a vote to be valid.
         """
         return self._quorum.get()
-    
+
     @external
     @only_owner
     def setVoteDefinitionFee(self, fee: int) -> None:
@@ -112,7 +111,7 @@ class Governance(IconScoreBase):
         Returns the bnusd fee required for defining a vote.
         """
         return self._bnusd_vote_definition_fee.get()
-    
+
     @external
     @only_owner
     def setBalnVoteDefinitionCriterion(self, percentage: int) -> None:
@@ -141,7 +140,7 @@ class Governance(IconScoreBase):
         """
         proposal = ProposalDB(vote_index, self.db)
         eligible_addresses = [proposal.proposer.get(), self.owner]
-        
+
         if self.msg.sender not in eligible_addresses:
             revert("Only owner or proposer may call this method.")
         if proposal.start_snapshot.get() <= self.getDay() and self.msg.sender != self.owner:
@@ -156,7 +155,7 @@ class Governance(IconScoreBase):
         proposal.status.set(ProposalStatus.STATUS[ProposalStatus.CANCELLED])
 
     @external
-    def defineVote(self, name: str, description: str, vote_start: int, 
+    def defineVote(self, name: str, description: str, vote_start: int,
                    snapshot: int, actions: str = "{}") -> None:
         """
         Defines a new vote and which actions are to be executed if it is successful.
@@ -178,7 +177,7 @@ class Governance(IconScoreBase):
         vote_index = ProposalDB.proposal_id(name, self.db)
         if vote_index > 0:
             revert(f'Poll name {name} has already been used.')
-        
+
         # Test baln staking criterion.
         baln = self.create_interface_score(self.addresses['baln'], BalancedInterface)
         baln_total = baln.totalSupply()
@@ -195,8 +194,10 @@ class Governance(IconScoreBase):
         if len(actions_dict) > self.maxActions():
             revert(f"Balanced Governance: Only {self.maxActions()} actions are allowed")
 
-        ProposalDB.create_proposal(name=name, description=description, proposer=self.msg.sender, quorum=self._quorum.get()*EXA//100,
-                                   majority=MAJORITY, snapshot=snapshot, start=vote_start, end=vote_start + self._vote_duration.get(),
+        ProposalDB.create_proposal(name=name, description=description, proposer=self.msg.sender,
+                                   quorum=self._quorum.get() * EXA // 100,
+                                   majority=MAJORITY, snapshot=snapshot, start=vote_start,
+                                   end=vote_start + self._vote_duration.get(),
                                    actions=actions, fee=self._bnusd_vote_definition_fee.get(), db=self.db)
 
     @external(readonly=True)
@@ -328,7 +329,7 @@ class Governance(IconScoreBase):
                     try:
                         self._execute_vote_actions(actions)
                         proposal.status.set(ProposalStatus.STATUS[ProposalStatus.EXECUTED])
-                    except BaseException as e:
+                    except Exception:
                         proposal.status.set(ProposalStatus.STATUS[ProposalStatus.FAILED_EXECUTION])
                 else:
                     proposal.status.set(ProposalStatus.STATUS[ProposalStatus.SUCCEEDED])
@@ -361,7 +362,7 @@ class Governance(IconScoreBase):
         vote_data = ProposalDB(_vote_index, self.db)
         try:
             total_baln = self.totalBaln(vote_data.vote_snapshot.get())
-        except BaseException:
+        except Exception:
             total_baln = 0
         if total_baln == 0:
             _for = 0
@@ -523,7 +524,7 @@ class Governance(IconScoreBase):
 
     @external
     @only_owner
-    def rebalancingSetBnusd(self,_address: Address) -> None:
+    def rebalancingSetBnusd(self, _address: Address) -> None:
         rebalancing = self.create_interface_score(self._rebalancing.get(), RebalancingInterface)
         rebalancing.setBnusd(_address)
 
@@ -564,15 +565,15 @@ class Governance(IconScoreBase):
 
     @external
     @only_owner
-    def setRebalancingSicx(self, _value: int) -> None:
-        rebalancing = self.create_interface_score(self._rebalancing.get(), RebalancingInterface)
-        rebalancing.setSicxReceivable(_value)
-
-    @external
-    @only_owner
     def setRebalancingThreshold(self, _value: int) -> None:
         rebalancing = self.create_interface_score(self._rebalancing.get(), RebalancingInterface)
         rebalancing.setPriceDiffThreshold(_value)
+
+    @external
+    @only_owner
+    def setMaxSellAmount(self, _sicx_value: int, _bnusd_value: int) -> None:
+        loans = self.create_interface_score(self.addresses['loans'], LoansInterface)
+        loans.setMaxSellAmount(_sicx_value, _bnusd_value)
 
     @external
     @only_owner
@@ -629,6 +630,38 @@ class Governance(IconScoreBase):
         loans = self.create_interface_score(self.addresses['loans'], LoansInterface)
         loans.setOriginationFee(_fee)
 
+    def setLiquidationRatio(self, _ratio: int):
+        loans = self.create_interface_score(self.addresses['loans'], LoansInterface)
+        loans.setLiquidationRatio(_ratio)
+
+    def setRetirementBonus(self, _points: int):
+        loans = self.create_interface_score(self.addresses['loans'], LoansInterface)
+        loans.setRetirementBonus(_points)
+
+    def setLiquidationReward(self, _points: int):
+        loans = self.create_interface_score(self.addresses['loans'], LoansInterface)
+        loans.setLiquidationReward(_points)
+
+    def setDividendsCategoryPercentage(self, _dist_list: List[DistPercentDict]):
+        dividends = self.create_interface_score(self.addresses['dividends'], DividendsInterface)
+        dividends.setDividendsCategoryPercentage(_dist_list)
+
+    def setPoolLpFee(self, _value: int) -> None:
+        dex = self.create_interface_score(self.addresses['dex'], DexInterface)
+        dex.setPoolLpFee(_value)
+
+    def setPoolBalnFee(self, _value: int) -> None:
+        dex = self.create_interface_score(self.addresses['dex'], DexInterface)
+        dex.setPoolBalnFee(_value)
+
+    def setIcxConversionFee(self, _value: int) -> None:
+        dex = self.create_interface_score(self.addresses['dex'], DexInterface)
+        dex.setIcxConversionFee(_value)
+
+    def setIcxBalnFee(self, _value: int) -> None:
+        dex = self.create_interface_score(self.addresses['dex'], DexInterface)
+        dex.setIcxBalnFee(_value)
+
     @external
     @only_owner
     def addAsset(self, _token_address: Address,
@@ -650,13 +683,24 @@ class Governance(IconScoreBase):
 
     @external
     @only_owner
-    def addNewDataSource(self, _data_source_name: str, _contract_address: Address) -> None:
+    def addNewDataSource(self, _data_source_name: str, _contract_address: str) -> None:
         """
         Add a new data source to receive BALN tokens. Starts with a default of
         zero percentage of the distribution.
         """
         rewards = self.create_interface_score(self.addresses['rewards'], RewardsInterface)
-        rewards.addNewDataSource(_data_source_name, _contract_address)
+        rewards.addNewDataSource(_data_source_name, Address.from_string(_contract_address))
+
+    @external
+    @only_owner
+    def removeDataSource(self, _data_source_name: str) -> None:
+        """
+        Removes a data source from the rewards.
+        :param _data_source_name: Name for the data source.
+        :type _data_source_name: str
+        """
+        rewards = self.create_interface_score(self.addresses['rewards'], RewardsInterface)
+        rewards.removeDataSource(_data_source_name)
 
     @external
     @only_owner
@@ -672,7 +716,6 @@ class Governance(IconScoreBase):
     def bonusDist(self, _addresses: List[Address], _amounts: List[int]) -> None:
         """
         Method to enable distribution of bonus BALN.
-
         :param _addresses: List of recipient addresses.
         :type _addresses: List[:class:`iconservice.base.address.Address`]
         :param _amounts: List of BALN amounts to send.
@@ -705,7 +748,6 @@ class Governance(IconScoreBase):
         """
         :param _id: Pool ID to map to the name
         :param _name: Name to associate
-
         Links a pool ID to a name, so users can look up platform-defined
         markets more easily.
         """
@@ -718,7 +760,6 @@ class Governance(IconScoreBase):
     def delegate(self, _delegations: List[PrepDelegations]):
         """
         Sets the delegation preference for the sICX held on the Loans contract.
-
         :param _delegations: List of dictionaries with two keys, Address and percent.
         :type _delegations: List[PrepDelegations]
         """
@@ -907,3 +948,22 @@ class Governance(IconScoreBase):
         self._baln_vote_definition_criterion.set(10)
         self._bnusd_vote_definition_fee.set(100 * EXA)
         self._quorum.set(20)
+
+    @external
+    @only_owner
+    def scoreUpdate_14(self):
+        """
+        Update actions of BIP5.
+        """
+        proposal = ProposalDB(var_key=5, db=self.db)
+        _actions = '{"addNewDataSource": {"_data_source_name": "IUSDC/bnUSD", "_contract_address": ' \
+                   '"cxa0af3165c08318e988cb30993b3048335b94af6c"}, "updateBalTokenDistPercentage": {' \
+                   '"_recipient_list": [{"recipient_name": "Loans", "dist_percent": 100000000000000000}, ' \
+                   '{"recipient_name": "sICX/ICX", "dist_percent": 70000000000000000}, {"recipient_name": ' \
+                   '"sICX/bnUSD", "dist_percent": 175000000000000000}, {"recipient_name": "BALN/bnUSD", ' \
+                   '"dist_percent": 175000000000000000}, {"recipient_name": "BALN/sICX", "dist_percent": ' \
+                   '50000000000000000}, {"recipient_name": "IUSDC/bnUSD", "dist_percent": 5000000000000000}, ' \
+                   '{"recipient_name": "Worker Tokens", "dist_percent": 200000000000000000}, {"recipient_name": ' \
+                   '"Reserve Fund", "dist_percent": 25000000000000000}, {"recipient_name": "DAOfund", "dist_percent": ' \
+                   '200000000000000000}]}}'
+        proposal.actions.set(_actions)

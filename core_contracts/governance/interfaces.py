@@ -27,10 +27,6 @@ class StakingInterface(InterfaceScore):
 
 class RebalancingInterface(InterfaceScore):
     @interface
-    def setSicxReceivable(self, _value: int) -> None:
-        pass
-
-    @interface
     def setPriceDiffThreshold(self, _value: int) -> None:
         pass
 
@@ -129,15 +125,31 @@ class LoansInterface(InterfaceScore):
         pass
 
     @interface
-    def setMiningRatio(self, _value) -> None:
+    def setMiningRatio(self, _value: int) -> None:
         pass
 
     @interface
-    def setLockingRatio(self, _value) -> None:
+    def setLockingRatio(self, _value: int) -> None:
         pass
 
     @interface
-    def setOriginationFee(self, _fee) -> None:
+    def setOriginationFee(self, _fee: int) -> None:
+        pass
+
+    @interface
+    def setLiquidationRatio(self, _ratio: int) -> None:
+        pass
+
+    @interface
+    def setRetirementBonus(self, _points: int):
+        pass
+
+    @interface
+    def setLiquidationReward(self, _points: int):
+        pass
+
+    @interface
+    def setMaxSellAmount(self, _sicx_value: int, _bnusd_value: int) -> None:
         pass
 
 
@@ -146,6 +158,22 @@ class DexInterface(InterfaceScore):
     @interface
     def add(self, _baseToken: Address, _quoteToken: Address, _baseValue: int, _quoteValue: int,
             _withdraw_unused: bool = True):
+        pass
+
+    @interface
+    def setPoolLpFee(self, _value: int) -> None:
+        pass
+
+    @interface
+    def setPoolBalnFee(self, _value: int) -> None:
+        pass
+
+    @interface
+    def setIcxBalnFee(self, _value: int) -> None:
+        pass
+
+    @interface
+    def setIcxConversionFee(self, _value: int) -> None:
         pass
 
     @interface
@@ -216,6 +244,7 @@ class DexInterface(InterfaceScore):
     def totalBalnAt(self, _id: int, _snapshot_id: int, _twa: bool = False) -> int:
         pass
 
+
 # An interface to the Rewards SCORE
 class RewardsInterface(InterfaceScore):
     @interface
@@ -247,6 +276,10 @@ class RewardsInterface(InterfaceScore):
         pass
 
     @interface
+    def removeDataSource(self, _name: str) -> None:
+        pass
+
+    @interface
     def updateBalTokenDistPercentage(self, _recipient_list: List[DistPercentDict]) -> None:
         pass
 
@@ -260,6 +293,9 @@ class DividendsInterface(InterfaceScore):
 
     @interface
     def setDistributionActivationStatus(self, _status: bool) -> None:
+        pass
+
+    def setDividendsCategoryPercentage(self, _dist_list: List[DistPercentDict]) -> None:
         pass
 
 
